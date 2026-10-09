@@ -21,6 +21,13 @@ public class Analysis {
 
     private Instant createdAt = Instant.now();
 
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private AppUser owner;
+
+    public AppUser getOwner() { return owner;}
+    
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getFilename() { return filename; }
