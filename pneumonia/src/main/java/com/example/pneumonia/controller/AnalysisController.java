@@ -23,7 +23,8 @@ public class AnalysisController {
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestParam("file") MultipartFile file) throws IOException {
+    public ResponseEntity<?> create(@RequestParam("file") MultipartFile file)
+     throws IOException {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body("Fichier vide");
         }
