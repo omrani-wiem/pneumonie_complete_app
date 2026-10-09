@@ -1,6 +1,7 @@
 package com.example.pneumonia.service;
 
 import com.example.pneumonia.entity.Analysis;
+import com.example.pneumonia.entity.AppUser;
 import com.example.pneumonia.ml.MlClient;
 import com.example.pneumonia.ml.MlResult;
 import com.example.pneumonia.repository.AnalysisRepository;
@@ -9,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AnalysisService {
@@ -21,9 +23,10 @@ public class AnalysisService {
         this.repo = repo;
     }
 
-    public Analysis analyze(MultipartFile file) throws IOException {
+    public Analysis analyze(MultipartFile file, AppUser owner) throws IOException {
         MlResult r = mlClient.predict(file);
         Analysis a = new Analysis();
+        a.setOwner(owner);
         a.setFilename(file.getOriginalFilename());
         a.setLabel(r.label());
         a.setProbabilityPneumonia(r.probabilityPneumonia());
@@ -31,7 +34,11 @@ public class AnalysisService {
         return repo.save(a);
     }
 
-    public List<Analysis> history() {
-        return repo.findAllByOrderByCreatedAtDesc();
+    public List<Analysis> historyOf(AppUser owner) {
+        return repo.findAllByOwnerOrderByCreatedAtDesc(owner);
+    }
+
+    public Optional<Analysis> findOf(Long id, AppUser owner) {
+        return repo.findByIdAndOwner(id, owner);
     }
 }

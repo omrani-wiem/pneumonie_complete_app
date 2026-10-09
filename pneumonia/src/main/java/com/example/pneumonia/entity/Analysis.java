@@ -26,7 +26,8 @@ public class Analysis {
     private AppUser owner;
 
     public AppUser getOwner() { return owner;}
-    
+     public void setOwner(AppUser owner) { this.owner = owner; }
+
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
