@@ -41,4 +41,8 @@ public class AnalysisService {
     public Optional<Analysis> findOf(Long id, AppUser owner) {
         return repo.findByIdAndOwner(id, owner);
     }
+
+    public List<Analysis> allWithOwner() {
+        return repo.findAllWithOwner();
+    }
 }

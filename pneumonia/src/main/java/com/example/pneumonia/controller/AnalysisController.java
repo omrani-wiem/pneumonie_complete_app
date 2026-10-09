@@ -4,7 +4,11 @@ import com.example.pneumonia.dto.AnalysisDto;
 import com.example.pneumonia.entity.AppUser;
 import com.example.pneumonia.repository.UserRepository;
 import com.example.pneumonia.service.AnalysisService;
+import com.example.pneumonia.service.PdfReportService;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,10 +27,12 @@ public class AnalysisController {
 
     private final AnalysisService service;
     private final UserRepository users;
+    private final PdfReportService pdf;
 
-    public AnalysisController(AnalysisService service, UserRepository users) {
+    public AnalysisController(AnalysisService service, UserRepository users, PdfReportService pdf) {
         this.service = service;
         this.users = users;
+        this.pdf = pdf;
     }
 
     @PostMapping
@@ -56,6 +62,19 @@ public class AnalysisController {
                                            @AuthenticationPrincipal Jwt jwt) {
         return service.findOf(id, currentUser(jwt))
                 .map(a -> ResponseEntity.ok(AnalysisDto.of(a, true)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> report(@PathVariable Long id,
+                                         @AuthenticationPrincipal Jwt jwt) {
+        return service.findOf(id, currentUser(jwt))
+                .map(a -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                ContentDisposition.attachment()
+                                        .filename("rapport-analyse-" + a.getId() + ".pdf").build().toString())
+                        .body(pdf.generate(a)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
