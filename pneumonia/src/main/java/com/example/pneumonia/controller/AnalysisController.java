@@ -17,6 +17,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import com.example.pneumonia.service.UploadValidator;
+import com.example.pneumonia.service.TreatmentRecommendationService;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,17 +26,17 @@ import java.util.List;
 @RequestMapping("/api/analyses")
 public class AnalysisController {
 
-    private final AnalysisService service;
-    private final UserRepository users;
         private final PdfReportService pdf;
     private final UploadValidator validator;
+    private final TreatmentRecommendationService recos;
 
-    public AnalysisController(AnalysisService service, UserRepository users,
-                              PdfReportService pdf, UploadValidator validator) {
+    public AnalysisController(AnalysisService service, UserRepository users, PdfReportService pdf,
+                              UploadValidator validator, TreatmentRecommendationService recos) {
         this.service = service;
         this.users = users;
         this.pdf = pdf;
         this.validator = validator;
+        this.recos = recos;
     }
 
     @PostMapping
@@ -51,7 +52,7 @@ public class AnalysisController {
         }
         AppUser me = currentUser(jwt);
         try {
-            return ResponseEntity.ok(AnalysisDto.of(service.analyze(file, safeName, me), true));
+            return ResponseEntity.ok(AnalysisDto.of(service.analyze(file, safeName, me), true, recos));
         } catch (RestClientException e) {
             // Ne pas renvoyer e.getMessage() : il peut contenir l'URL interne du service ML.
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
@@ -83,7 +84,7 @@ public class AnalysisController {
                         .header(HttpHeaders.CONTENT_DISPOSITION,
                                 ContentDisposition.attachment()
                                         .filename("rapport-analyse-" + a.getId() + ".pdf").build().toString())
-                        .body(pdf.generate(a)))
+                                                .body(pdf.generate(a, recos.recommend(a.getPneumoniaType()))))
                 .orElse(ResponseEntity.notFound().build());
     }
 
