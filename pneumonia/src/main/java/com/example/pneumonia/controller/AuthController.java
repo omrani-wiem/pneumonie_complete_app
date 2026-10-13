@@ -14,7 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-
+import com.example.pneumonia.service.LoginAttemptService;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController 
 @RequestMapping("/api/auth")
@@ -34,12 +35,15 @@ public class AuthController {
 
     private final  UserRepository users; 
     private final PasswordEncoder encoder; 
-    private final JwtService jwt;
+        private final JwtService jwt;
+    private final LoginAttemptService attempts;
 
-     public AuthController(UserRepository users, PasswordEncoder encoder,  JwtService jwt) {
+    public AuthController(UserRepository users, PasswordEncoder encoder, JwtService jwt,
+                          LoginAttemptService attempts) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
+        this.attempts = attempts;
     }
 
     @PostMapping("/register")
@@ -58,13 +62,24 @@ public class AuthController {
     }
    
 
-     @PostMapping("/login")
-     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
+         @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req, HttpServletRequest http) {
         String email = req.email().trim().toLowerCase();
+        String ip = http.getRemoteAddr();
+
+        long wait = attempts.retryAfterSeconds(email, ip);
+        if (wait > 0) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", String.valueOf(wait))
+                    .body("Trop de tentatives. Réessayez dans " + ((wait + 59) / 60) + " minute(s).");
+        }
+
         AppUser u = users.findByEmail(email).orElse(null);
-         if (u == null || !encoder.matches(req.password(), u.getPasswordHash())) {
+        if (u == null || !encoder.matches(req.password(), u.getPasswordHash())) {
+            attempts.recordFailure(email, ip);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Identifiants invalides");
         }
+        attempts.recordSuccess(email);
         return ResponseEntity.ok(new TokenResponse(jwt.generate(u), u.getEmail(), u.getRole()));
     }
 

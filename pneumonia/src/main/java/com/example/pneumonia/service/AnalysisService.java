@@ -23,11 +23,11 @@ public class AnalysisService {
         this.repo = repo;
     }
 
-    public Analysis analyze(MultipartFile file, AppUser owner) throws IOException {
+        public Analysis analyze(MultipartFile file, String safeFilename, AppUser owner) throws IOException {
         MlResult r = mlClient.predict(file);
         Analysis a = new Analysis();
         a.setOwner(owner);
-        a.setFilename(file.getOriginalFilename());
+        a.setFilename(safeFilename);
         a.setLabel(r.label());
         a.setProbabilityPneumonia(r.probabilityPneumonia());
         a.setHeatmapBase64(r.heatmapBase64());

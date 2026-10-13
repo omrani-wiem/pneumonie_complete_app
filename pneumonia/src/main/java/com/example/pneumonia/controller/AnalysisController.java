@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import com.example.pneumonia.service.UploadValidator;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,26 +27,35 @@ public class AnalysisController {
 
     private final AnalysisService service;
     private final UserRepository users;
-    private final PdfReportService pdf;
+        private final PdfReportService pdf;
+    private final UploadValidator validator;
 
-    public AnalysisController(AnalysisService service, UserRepository users, PdfReportService pdf) {
+    public AnalysisController(AnalysisService service, UserRepository users,
+                              PdfReportService pdf, UploadValidator validator) {
         this.service = service;
         this.users = users;
         this.pdf = pdf;
+        this.validator = validator;
     }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestParam("file") MultipartFile file,
                                     @AuthenticationPrincipal Jwt jwt) throws IOException {
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body("Fichier vide");
+                String safeName;
+        try {
+            safeName = validator.validate(file);
+        } catch (UploadValidator.InvalidUploadException e) {
+            return ResponseEntity.status(e.isUnsupportedType()
+                            ? HttpStatus.UNSUPPORTED_MEDIA_TYPE : HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
         }
         AppUser me = currentUser(jwt);
         try {
-            return ResponseEntity.ok(AnalysisDto.of(service.analyze(file, me), true));
+            return ResponseEntity.ok(AnalysisDto.of(service.analyze(file, safeName, me), true));
         } catch (RestClientException e) {
+            // Ne pas renvoyer e.getMessage() : il peut contenir l'URL interne du service ML.
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("Service de prédiction indisponible : " + e.getMessage());
+                    .body("Service de prédiction indisponible. Réessayez plus tard.");
         }
     }
 
