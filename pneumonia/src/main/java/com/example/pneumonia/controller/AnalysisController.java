@@ -22,7 +22,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/analyses")
-@CrossOrigin(origins = "*")   // à restreindre plus tard
 public class AnalysisController {
 
     private final AnalysisService service;

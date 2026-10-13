@@ -14,10 +14,13 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class SecurityConfig {
@@ -40,7 +43,7 @@ public class SecurityConfig {
 
     @Bean
     JwtDecoder jwtDecoder(@Value("${app.jwt.secret}") String secret) {
-        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        SecretKey key = JwtSecrets.key(secret);
         return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
     }
 
@@ -58,4 +61,24 @@ public class SecurityConfig {
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    @Bean 
+    CorsConfigurationSource corsConfigurationSource(
+        @Value("${app.cors.allowed-origins:}") String allowedOrigins) {
+     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim).filter(o -> !o.isEmpty()).toList();
+        if (!origins.isEmpty()) {
+            CorsConfiguration cfg = new CorsConfiguration();
+            cfg.setAllowedOrigins(origins);
+            cfg.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+            cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+            cfg.setMaxAge(3600L);
+            source.registerCorsConfiguration("/api/**", cfg);
+        }
+        return source;
+    }
+
+
+
 }

@@ -8,7 +8,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*")
+
 public class AdminController {
 
     public record AdminAnalysisDto(Long id, String ownerEmail, String filename,

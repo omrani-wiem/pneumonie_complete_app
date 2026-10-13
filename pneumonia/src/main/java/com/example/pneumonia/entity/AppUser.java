@@ -12,7 +12,7 @@ public class AppUser {
     @Column(unique = true, nullable = false)
     private String email;
     
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
