@@ -33,8 +33,10 @@ public class MlClient {
     }
      
      public MlResult predict(MultipartFile file) throws IOException {
-        if (mock) {
-            return new MlResult("PNEUMONIA", 0.87, null);//je doit encore regarder ca 
+                if (mock) {
+            // SIMULATION (profil dev / tests uniquement) : résultat fixe, jamais un vrai diagnostic.
+            // Le champ "simulated" est enregistré et affiché dans l'interface et le PDF.
+            return new MlResult("PNEUMONIA", 0.87, null, "BACTERIAL", 0.72, true);
         }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);

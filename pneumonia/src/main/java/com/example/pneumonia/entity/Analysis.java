@@ -18,6 +18,12 @@ public class Analysis {
     @Column(columnDefinition = "TEXT")
     private String heatmapBase64;
 
+    // Type estimé : BACTERIAL, VIRAL, UNDETERMINED, ou null (non évalué / pas de pneumonie).
+    private String pneumoniaType;
+    private Double typeConfidence;
+    // Wrapper nullable : les anciennes lignes (créées avant cette colonne) restent valides.
+    private Boolean simulated;
+
 
     private Instant createdAt = Instant.now();
 
@@ -41,6 +47,12 @@ public class Analysis {
     public void setHeatmapBase64(String h) { this.heatmapBase64 = h; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public String getPneumoniaType() { return pneumoniaType; }
+    public void setPneumoniaType(String t) { this.pneumoniaType = t; }
+    public Double getTypeConfidence() { return typeConfidence; }
+    public void setTypeConfidence(Double c) { this.typeConfidence = c; }
+    public boolean isSimulated() { return Boolean.TRUE.equals(simulated); }
+    public void setSimulated(boolean s) { this.simulated = s; }
 
 
 
