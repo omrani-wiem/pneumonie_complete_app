@@ -32,7 +32,6 @@ public class AnalysisService {
         boolean pneumonia = "PNEUMONIA".equals(r.label());
         a.setPneumoniaType(pneumonia ? r.pneumoniaType() : null);
         a.setTypeConfidence(pneumonia ? r.typeConfidence() : null);
-        a.setSimulated(r.simulated());
         a.setLabel(r.label());
         a.setProbabilityPneumonia(r.probabilityPneumonia());
         a.setHeatmapBase64(r.heatmapBase64());

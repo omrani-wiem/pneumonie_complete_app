@@ -59,11 +59,6 @@ public class PdfReportService {
 
             // Bandeaux d'avertissement en haut
             doc.add(banner(BANNER, bannerFont, new Color(0x9B, 0x1C, 0x1C)));
-            if (a.isSimulated()) {
-                doc.add(new Paragraph(" ", small));
-                doc.add(banner("MODE SIMULATION - RÉSULTATS FICTIFS, NE PAS UTILISER",
-                        bannerFont, new Color(0xB4, 0x53, 0x09)));
-            }
 
             Paragraph heading = new Paragraph("Rapport d'analyse radiographique", title);
             heading.setSpacingBefore(14);
@@ -81,7 +76,7 @@ public class PdfReportService {
                     String.format(Locale.FRANCE, "%.1f %%", a.getProbabilityPneumonia() * 100),
                     bold, normal);
             if (pneumonia) {
-                addRow(table, "Type estimé", typeText(a, reco), bold, normal);
+                addRow(table, "(indice de confiance du modèle : %.0f %%)", typeText(a, reco), bold, normal);
             }
             doc.add(table);
 

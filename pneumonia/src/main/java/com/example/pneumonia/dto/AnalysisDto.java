@@ -17,7 +17,6 @@ public record AnalysisDto(
         String heatmapBase64,
         String pneumoniaType,
         Double typeConfidence,
-        boolean simulated,
         Recommendation recommendation) {
 
     public static AnalysisDto of(Analysis a, boolean withDetails, TreatmentRecommendationService recos) {
@@ -25,7 +24,7 @@ public record AnalysisDto(
         return new AnalysisDto(a.getId(), a.getFilename(), a.getLabel(),
                 a.getProbabilityPneumonia(), a.getCreatedAt(),
                 withDetails ? a.getHeatmapBase64() : null,
-                a.getPneumoniaType(), a.getTypeConfidence(), a.isSimulated(),
+                a.getPneumoniaType(), a.getTypeConfidence(),
                 withDetails && pneumonia ? recos.recommend(a.getPneumoniaType()) : null);
     }
 }

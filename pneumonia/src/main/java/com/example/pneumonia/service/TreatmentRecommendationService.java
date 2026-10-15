@@ -70,7 +70,11 @@ public class TreatmentRecommendationService {
                 "Pneumonie probablement virale",
                 "Le profil de l'image évoque plutôt une origine virale. La prise en charge est le plus "
                         + "souvent symptomatique ; les antibiotiques ne sont pas systématiques.",
-                List.of("Examen clinique, constantes et saturation en oxygène",
+                
+                List.of("Le type « viral » est une orientation de fiabilité limitée : une origine bactérienne n'est pas exclue. "
+                + "En cas de doute, de fièvre persistante ou de signe de gravité, une antibiothérapie reste à discuter.",
+        "Traitement principalement symptomatique.",
+                        "Examen clinique, constantes et saturation en oxygène",
                         "Recherche virale selon la saison et le contexte : grippe, SARS-CoV-2, VRS (PCR ou test rapide)",
                         "CRP/NFS en cas de doute sur une surinfection bactérienne"),
                 List.of("Traitement principalement symptomatique.",

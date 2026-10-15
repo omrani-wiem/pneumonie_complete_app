@@ -14,6 +14,5 @@ public record MlResult(
         @JsonProperty("probability_pneumonia") double probabilityPneumonia,
         @JsonProperty("heatmap_base64") String heatmapBase64,
         @JsonProperty("pneumonia_type") String pneumoniaType,
-        @JsonProperty("type_confidence") Double typeConfidence,
-        boolean simulated) {
+        @JsonProperty("type_confidence") Double typeConfidence) {
 }

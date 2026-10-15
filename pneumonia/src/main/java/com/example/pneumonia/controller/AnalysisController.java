@@ -26,9 +26,11 @@ import java.util.List;
 @RequestMapping("/api/analyses")
 public class AnalysisController {
 
-        private final PdfReportService pdf;
+    private final PdfReportService pdf;
     private final UploadValidator validator;
     private final TreatmentRecommendationService recos;
+    private final AnalysisService service;
+    private final UserRepository users;
 
     public AnalysisController(AnalysisService service, UserRepository users, PdfReportService pdf,
                               UploadValidator validator, TreatmentRecommendationService recos) {
@@ -60,10 +62,10 @@ public class AnalysisController {
         }
     }
 
-    @GetMapping
+       @GetMapping
     public List<AnalysisDto> history(@AuthenticationPrincipal Jwt jwt) {
         return service.historyOf(currentUser(jwt)).stream()
-                .map(a -> AnalysisDto.of(a, false))
+                .map(a -> AnalysisDto.of(a, false, recos))
                 .toList();
     }
 
@@ -71,10 +73,9 @@ public class AnalysisController {
     public ResponseEntity<AnalysisDto> one(@PathVariable Long id,
                                            @AuthenticationPrincipal Jwt jwt) {
         return service.findOf(id, currentUser(jwt))
-                .map(a -> ResponseEntity.ok(AnalysisDto.of(a, true)))
+                .map(a -> ResponseEntity.ok(AnalysisDto.of(a, true, recos)))
                 .orElse(ResponseEntity.notFound().build());
     }
-
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> report(@PathVariable Long id,
                                          @AuthenticationPrincipal Jwt jwt) {

@@ -22,7 +22,7 @@ public class Analysis {
     private String pneumoniaType;
     private Double typeConfidence;
     // Wrapper nullable : les anciennes lignes (créées avant cette colonne) restent valides.
-    private Boolean simulated;
+    
 
 
     private Instant createdAt = Instant.now();
@@ -51,8 +51,7 @@ public class Analysis {
     public void setPneumoniaType(String t) { this.pneumoniaType = t; }
     public Double getTypeConfidence() { return typeConfidence; }
     public void setTypeConfidence(Double c) { this.typeConfidence = c; }
-    public boolean isSimulated() { return Boolean.TRUE.equals(simulated); }
-    public void setSimulated(boolean s) { this.simulated = s; }
+    
 
 
 
