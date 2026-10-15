@@ -71,13 +71,14 @@ public class PdfReportService {
             addRow(table, "Analyse n°", String.valueOf(a.getId()), bold, normal);
             addRow(table, "Date", DATE.format(a.getCreatedAt()), bold, normal);
             addRow(table, "Fichier", a.getFilename() == null ? "-" : a.getFilename(), bold, normal);
-            addRow(table, "Résultat", pneumonia ? "Pneumonie suspectée" : "Pas de pneumonie détectée", bold, normal);
-            addRow(table, "Probabilité de pneumonie",
-                    String.format(Locale.FRANCE, "%.1f %%", a.getProbabilityPneumonia() * 100),
+                       double pPneu = a.getProbabilityPneumonia() * 100;
+            addRow(table, "Résultat",
+                    pneumonia
+                            ? String.format(Locale.FRANCE, "Pneumonie suspectée %.1f %%", pPneu)
+                            : String.format(Locale.FRANCE,
+                                    "Pas de pneumonie détectée (probabilité de pneumonie : %.1f %%)", pPneu),
                     bold, normal);
-            if (pneumonia) {
-                addRow(table, "(indice de confiance du modèle : %.0f %%)", typeText(a, reco), bold, normal);
-            }
+            addRow(table, "Type de pneumonie", typeText(a, reco), bold, normal);
             doc.add(table);
 
             // Pistes de prise en charge : seulement s'il y a pneumonie
@@ -126,7 +127,7 @@ public class PdfReportService {
         String t = a.getPneumoniaType();
         String base = reco == null ? "Non évalué" : reco.typeLabel();
         if (("BACTERIAL".equals(t) || "VIRAL".equals(t)) && a.getTypeConfidence() != null) {
-            return base + String.format(Locale.FRANCE, " (confiance du modèle : %.0f %%)",
+            return base + String.format(Locale.FRANCE, " (indice de confiance du modèle : %.0f %%)",
                     a.getTypeConfidence() * 100);
         }
         return base;
