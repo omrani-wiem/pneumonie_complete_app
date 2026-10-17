@@ -6,6 +6,7 @@ import com.example.pneumonia.entity.Patient;
 import com.example.pneumonia.repository.PatientRepository;
 import com.example.pneumonia.repository.UserRepository;
 import com.example.pneumonia.service.AnalysisService;
+import com.example.pneumonia.service.AuditService;
 import com.example.pneumonia.service.PdfReportService;
 import com.example.pneumonia.service.TreatmentRecommendationService;
 import com.example.pneumonia.service.UploadValidator;
@@ -20,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import com.example.pneumonia.entity.Analysis;
+import com.example.pneumonia.service.AnalysisRateLimiter;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -37,25 +40,36 @@ public class AnalysisController {
     private final AnalysisService service;
     private final UserRepository users;
     private final PatientRepository patients;
+    private final AuditService audit;
+    private final AnalysisRateLimiter limiter;
 
     public AnalysisController(AnalysisService service, UserRepository users, PdfReportService pdf,
                               UploadValidator validator, TreatmentRecommendationService recos,
-                              PatientRepository patients) {
+                              PatientRepository patients, AuditService audit, AnalysisRateLimiter limiter ) {
         this.service = service;
         this.users = users;
         this.pdf = pdf;
         this.validator = validator;
         this.recos = recos;
         this.patients = patients;
+        this.audit = audit;
+        this.limiter = limiter;
     }
 
-    @PostMapping
+        @PostMapping
     public ResponseEntity<?> create(@RequestParam("file") MultipartFile file,
                                     @RequestParam("patientId") Long patientId,
                                     @RequestParam(value = "temperatureC", required = false) Double temperatureC,
                                     @RequestParam(value = "spo2Percent", required = false) Integer spo2Percent,
                                     @RequestParam(value = "symptomDays", required = false) Integer symptomDays,
                                     @AuthenticationPrincipal Jwt jwt) throws IOException {
+        AppUser me = currentUser(jwt);
+        if (!limiter.tryAcquire(me.getEmail())) {
+            audit.record(me.getEmail(), "ANALYSIS_RATE_LIMITED", "patient", patientId, false);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", "60")
+                    .body("Trop d'analyses en peu de temps. Réessayez dans une minute.");
+        }
         String safeName;
         try {
             safeName = validator.validate(file);
@@ -64,7 +78,6 @@ public class AnalysisController {
                             ? HttpStatus.UNSUPPORTED_MEDIA_TYPE : HttpStatus.BAD_REQUEST)
                     .body(e.getMessage());
         }
-        AppUser me = currentUser(jwt);
         Patient patient = patients.findByIdAndOwner(patientId, me).orElse(null);
         if (patient == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient introuvable.");
         if (temperatureC != null && (temperatureC < 30 || temperatureC > 45))
@@ -74,16 +87,15 @@ public class AnalysisController {
         if (symptomDays != null && (symptomDays < 0 || symptomDays > 60))
             return ResponseEntity.badRequest().body("Durée des symptômes invalide (0 à 60 jours).");
         try {
-            return ResponseEntity.ok(AnalysisDto.of(
-                    service.analyze(file, safeName, me, patient, temperatureC, spo2Percent, symptomDays),
-                    true, recos));
+            Analysis saved = service.analyze(file, safeName, me, patient, temperatureC, spo2Percent, symptomDays);
+            audit.record(me.getEmail(), "ANALYSIS_CREATE", "analysis", saved.getId(), true);
+            return ResponseEntity.ok(AnalysisDto.of(saved, true, recos));
         } catch (RestClientException e) {
-            // Ne pas renvoyer e.getMessage() : il peut contenir l'URL interne du service ML.
+            audit.record(me.getEmail(), "ANALYSIS_CREATE", "patient", patientId, false);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body("Service de prédiction indisponible. Réessayez plus tard.");
         }
     }
-
     @GetMapping
     public List<AnalysisDto> history(@AuthenticationPrincipal Jwt jwt) {
         return service.historyOf(currentUser(jwt)).stream()
@@ -91,11 +103,14 @@ public class AnalysisController {
                 .toList();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<AnalysisDto> one(@PathVariable Long id,
-                                           @AuthenticationPrincipal Jwt jwt) {
-        return service.findOf(id, currentUser(jwt))
-                .map(a -> ResponseEntity.ok(AnalysisDto.of(a, true, recos)))
+        @GetMapping("/{id}")
+    public ResponseEntity<AnalysisDto> one(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        AppUser me = currentUser(jwt);
+        return service.findOf(id, me)
+                .map(a -> {
+                    audit.record(me.getEmail(), "ANALYSIS_VIEW", "analysis", a.getId(), true);
+                    return ResponseEntity.ok(AnalysisDto.of(a, true, recos));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -107,15 +122,20 @@ public class AnalysisController {
             return ResponseEntity.badRequest().body("Avis invalide (AGREE ou DISAGREE).");
         if (body.comment() != null && body.comment().length() > 2000)
             return ResponseEntity.badRequest().body("Commentaire trop long (2000 caractères max).");
-        return service.findOf(id, currentUser(jwt))
+        AppUser me = currentUser(jwt);
+        return service.findOf(id, me)
                 .map(a -> {
                     a.setDoctorOpinion(body.opinion());
                     a.setDoctorComment(body.comment() == null || body.comment().isBlank() ? null : body.comment().trim());
                     a.setOpinionAt(Instant.now());
-                    return ResponseEntity.ok(AnalysisDto.of(service.save(a), true, recos));
+                    Analysis saved = service.save(a);
+                    audit.record(me.getEmail(), "ANALYSIS_OPINION", "analysis", saved.getId(), true);
+                    return ResponseEntity.ok(AnalysisDto.of(saved, true, recos));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
+   
 
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> report(@PathVariable Long id,

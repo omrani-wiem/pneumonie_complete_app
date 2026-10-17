@@ -7,6 +7,7 @@ import com.example.pneumonia.entity.Patient;
 import com.example.pneumonia.repository.AnalysisRepository;
 import com.example.pneumonia.repository.PatientRepository;
 import com.example.pneumonia.repository.UserRepository;
+import com.example.pneumonia.service.AuditService;
 import com.example.pneumonia.service.TreatmentRecommendationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -29,13 +29,16 @@ public class PatientController {
     private final AnalysisRepository analyses;
     private final UserRepository users;
     private final TreatmentRecommendationService recos;
+    private final AuditService audit;
 
-    public PatientController(PatientRepository patients, AnalysisRepository analyses,
-                             UserRepository users, TreatmentRecommendationService recos) {
+       public PatientController(PatientRepository patients, AnalysisRepository analyses,
+                             UserRepository users, TreatmentRecommendationService recos,
+                             AuditService audit) {
         this.patients = patients;
         this.analyses = analyses;
         this.users = users;
         this.recos = recos;
+        this.audit = audit;
     }
 
     @PostMapping
@@ -54,7 +57,9 @@ public class PatientController {
         p.setBirthDate(r.birthDate());
         p.setSex(r.sex().trim().toUpperCase());
         p.setNotes(r.notes() == null || r.notes().isBlank() ? null : r.notes().trim());
-        return ResponseEntity.status(HttpStatus.CREATED).body(PatientDto.of(patients.save(p)));
+        Patient saved = patients.save(p);
+        audit.record(me.getEmail(), "PATIENT_CREATE", "patient", saved.getId(), true);
+        return ResponseEntity.status(HttpStatus.CREATED).body(PatientDto.of(saved));
     }
 
     @GetMapping
@@ -65,8 +70,12 @@ public class PatientController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PatientDto> one(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
-        return patients.findByIdAndOwner(id, currentUser(jwt))
-                .map(p -> ResponseEntity.ok(PatientDto.of(p)))
+        AppUser me = currentUser(jwt);
+        return patients.findByIdAndOwner(id, me)
+                .map(p -> {
+                    audit.record(me.getEmail(), "PATIENT_VIEW", "patient", p.getId(), true);
+                    return ResponseEntity.ok(PatientDto.of(p));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -75,9 +84,12 @@ public class PatientController {
                                                         @AuthenticationPrincipal Jwt jwt) {
         AppUser me = currentUser(jwt);
         return patients.findByIdAndOwner(id, me)
-                .map(p -> ResponseEntity.ok(
-                        analyses.findAllByOwnerAndPatientOrderByCreatedAtDesc(me, p).stream()
-                                .map(a -> AnalysisDto.of(a, false, recos)).toList()))
+                .map(p -> {
+                    audit.record(me.getEmail(), "PATIENT_ANALYSES_VIEW", "patient", p.getId(), true);
+                    return ResponseEntity.ok(
+                            analyses.findAllByOwnerAndPatientOrderByCreatedAtDesc(me, p).stream()
+                                    .map(a -> AnalysisDto.of(a, false, recos)).toList());
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 

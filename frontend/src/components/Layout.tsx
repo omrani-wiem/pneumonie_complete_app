@@ -13,6 +13,7 @@ export default function Layout() {
           <NavLink to="/patients" end>Patients</NavLink>
           <NavLink to="/patients/new">Nouveau patient</NavLink>
           {getRole() === 'ADMIN' && <NavLink to="/admin">Comptes</NavLink>}
+          <NavLink to="/admin/audit">Journal d'audit</NavLink>
         </nav>
         <button className="link" onClick={() => { clearToken(); nav('/login') }}>Se déconnecter</button>
       </aside>

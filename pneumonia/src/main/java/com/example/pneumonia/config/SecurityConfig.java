@@ -19,7 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
-
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import javax.crypto.SecretKey;
 
 @Configuration
@@ -30,6 +30,10 @@ public class SecurityConfig {
         return http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
+                .headers(h -> h
+                        .frameOptions(f -> f.deny())
+                        .contentSecurityPolicy(c -> c.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+                        .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                         .authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
