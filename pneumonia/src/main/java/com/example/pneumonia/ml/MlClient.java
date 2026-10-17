@@ -20,19 +20,22 @@ public class MlClient {
 
     private final RestTemplate rest;
     private final String baseUrl;
+    private final String secret;
 
-    public MlClient(@Value("${ml.service.url}") String baseUrl) {
+    public MlClient(@Value("${ml.service.url}") String baseUrl,
+                    @Value("${ml.service.secret:}") String secret) {
         this.baseUrl = baseUrl;
+        this.secret = secret;
         SimpleClientHttpRequestFactory f = new SimpleClientHttpRequestFactory();
         f.setConnectTimeout(30_000);
-        f.setReadTimeout(120_000);   // le service hébergé gratuitement peut être endormi
+        f.setReadTimeout(120_000);
         this.rest = new RestTemplate(f);
     }
-
     /** Appelle le service ML. Lève RestClientException si le service est injoignable ou répond mal. */
     public MlResult predict(MultipartFile file) throws IOException {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        if (secret != null && !secret.isBlank()) headers.set("X-Internal-Secret", secret);
 
         MultipartFile source = file;
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();

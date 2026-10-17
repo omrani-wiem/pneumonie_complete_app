@@ -8,7 +8,8 @@ import onnxruntime as ort
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-
+import hmac
+from fastapi import Header
 from typing_logic import interpret
 
 IMG_SIZE = (224, 224)
@@ -16,6 +17,14 @@ MAX_BYTES = 10 * 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 40_000_000          # refuse les "decompression bombs"
 TYPE_MIN_CONF = float(os.getenv("TYPE_MIN_CONF", "0.75"))
 TYPE_MODEL_PATH = os.getenv("TYPE_MODEL_PATH", "type.onnx")
+ML_SHARED_SECRET = os.getenv("ML_SHARED_SECRET", "")
+if len(ML_SHARED_SECRET) < 16:
+    raise RuntimeError("ML_SHARED_SECRET (16 caractères minimum) est obligatoire.")
+
+
+def _check_secret(provided: str | None) -> None:
+    if not hmac.compare_digest((provided or "").encode(), ML_SHARED_SECRET.encode()):
+        raise HTTPException(status_code=401, detail="Non autorisé")
 
 app = FastAPI(title="Pneumonia ML Service (ONNX)")
 
@@ -62,7 +71,8 @@ def health():
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(file: UploadFile = File(...), x_internal_secret: str | None = Header(default=None)):
+    _check_secret(x_internal_secret)
     data = await file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
         raise HTTPException(status_code=413, detail="Fichier trop volumineux")

@@ -53,6 +53,41 @@ public class Analysis {
     public void setTypeConfidence(Double c) { this.typeConfidence = c; }
     
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id")
+    private Patient patient;
+
+    @Column(name = "temperature_c")
+    private Double temperatureC;
+    @Column(name = "spo2_percent")
+    private Integer spo2Percent;
+    @Column(name = "symptom_days")
+    private Integer symptomDays;
+    @Column(name = "model_version")
+    private String modelVersion;
+    @Column(name = "doctor_opinion")
+    private String doctorOpinion;
+    @Column(name = "doctor_comment", columnDefinition = "TEXT")
+    private String doctorComment;
+    @Column(name = "opinion_at")
+    private Instant opinionAt;
+
+    public Patient getPatient() { return patient; }
+    public void setPatient(Patient p) { this.patient = p; }
+    public Double getTemperatureC() { return temperatureC; }
+    public void setTemperatureC(Double v) { this.temperatureC = v; }
+    public Integer getSpo2Percent() { return spo2Percent; }
+    public void setSpo2Percent(Integer v) { this.spo2Percent = v; }
+    public Integer getSymptomDays() { return symptomDays; }
+    public void setSymptomDays(Integer v) { this.symptomDays = v; }
+    public String getModelVersion() { return modelVersion; }
+    public void setModelVersion(String v) { this.modelVersion = v; }
+    public String getDoctorOpinion() { return doctorOpinion; }
+    public void setDoctorOpinion(String v) { this.doctorOpinion = v; }
+    public String getDoctorComment() { return doctorComment; }
+    public void setDoctorComment(String v) { this.doctorComment = v; }
+    public Instant getOpinionAt() { return opinionAt; }
+    public void setOpinionAt(Instant v) { this.opinionAt = v; }
 
 
 

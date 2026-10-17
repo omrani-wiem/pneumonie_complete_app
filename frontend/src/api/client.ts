@@ -3,7 +3,9 @@ const TOKEN_KEY = 'token'
 
 export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
 export const setToken = (t: string): void => localStorage.setItem(TOKEN_KEY, t)
-export const clearToken = (): void => localStorage.removeItem(TOKEN_KEY)
+export const clearToken = (): void => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('role') }
+export const getRole = (): string | null => localStorage.getItem('role')
+
 
 export class ApiError extends Error {
   status: number
@@ -78,6 +80,7 @@ export async function login(email: string, password: string): Promise<void> {
   const t = data.token ?? data.accessToken ?? data.jwt
   if (typeof t !== 'string') throw new ApiError(500, 'Réponse de connexion inattendue : jeton absent.')
   setToken(t)
+  localStorage.setItem('role', typeof data.role === 'string' ? data.role : 'USER')
 }
 
 export async function register(name: string, email: string, password: string): Promise<void> {
@@ -109,4 +112,21 @@ export async function downloadPdf(id: number | string): Promise<void> {
   a.download = `analyse_${id}.pdf`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+export function postJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+export function putJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
 }

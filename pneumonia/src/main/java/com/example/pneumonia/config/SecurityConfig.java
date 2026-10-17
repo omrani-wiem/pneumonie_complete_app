@@ -71,7 +71,7 @@ public class SecurityConfig {
         if (!origins.isEmpty()) {
             CorsConfiguration cfg = new CorsConfiguration();
             cfg.setAllowedOrigins(origins);
-            cfg.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+            cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
             cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
             cfg.setMaxAge(3600L);
             source.registerCorsConfiguration("/api/**", cfg);

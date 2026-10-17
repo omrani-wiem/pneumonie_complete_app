@@ -10,6 +10,10 @@ import java.util.Optional;
 
 public interface AnalysisRepository extends JpaRepository<Analysis, Long> {
     List<Analysis> findAllByOwnerOrderByCreatedAtDesc(AppUser owner);
+
+
+    List<Analysis> findAllByOwnerAndPatientOrderByCreatedAtDesc(AppUser owner, com.example.pneumonia.entity.Patient patient);
+
     Optional<Analysis> findByIdAndOwner(Long id, AppUser owner);
 
     @Query("select a from Analysis a join fetch a.owner order by a.createdAt desc")

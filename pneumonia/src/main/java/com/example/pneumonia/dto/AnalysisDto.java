@@ -17,7 +17,15 @@ public record AnalysisDto(
         String heatmapBase64,
         String pneumoniaType,
         Double typeConfidence,
-        Recommendation recommendation) {
+        Recommendation recommendation,
+        PatientDto patient,
+        Double temperatureC,
+        Integer spo2Percent,
+        Integer symptomDays,
+        String modelVersion,
+        String doctorOpinion,
+        String doctorComment,
+        Instant opinionAt) {
 
     public static AnalysisDto of(Analysis a, boolean withDetails, TreatmentRecommendationService recos) {
         boolean pneumonia = "PNEUMONIA".equals(a.getLabel());
@@ -25,6 +33,9 @@ public record AnalysisDto(
                 a.getProbabilityPneumonia(), a.getCreatedAt(),
                 withDetails ? a.getHeatmapBase64() : null,
                 a.getPneumoniaType(), a.getTypeConfidence(),
-                withDetails && pneumonia ? recos.recommend(a.getPneumoniaType()) : null);
+                withDetails && pneumonia ? recos.recommend(a.getPneumoniaType()) : null,
+                a.getPatient() == null ? null : PatientDto.of(a.getPatient()),
+                a.getTemperatureC(), a.getSpo2Percent(), a.getSymptomDays(),
+                a.getModelVersion(), a.getDoctorOpinion(), a.getDoctorComment(), a.getOpinionAt());
     }
 }

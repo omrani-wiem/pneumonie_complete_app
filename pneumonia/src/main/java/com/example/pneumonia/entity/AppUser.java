@@ -4,6 +4,16 @@ import jakarta.persistence.*;
 @Entity 
 @Table(name = "users")
 public class AppUser {
+        @Column(nullable = false)
+    private boolean enabled = true;
+
+    public boolean isEnabled() {
+         return enabled;
+         }
+         
+    public void setEnabled(boolean enabled) {
+         this.enabled = enabled;
+         }
 
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
