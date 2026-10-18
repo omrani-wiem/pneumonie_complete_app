@@ -11,6 +11,7 @@ export type Patient = {
   createdAt: string
   ageMonths: number
   ageInModelRange: boolean
+  archived: boolean
 }
 
 export type Analysis = {
