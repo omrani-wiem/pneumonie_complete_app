@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ApiError, putJson, request } from '../api/client'
+import { ApiError, downloadFile, putJson, request } from '../api/client'
 import { useFetch } from '../api/useFetch'
 import type { Analysis, Patient } from '../api/types'
 import AgeWarning from '../components/AgeWarning'
@@ -16,6 +16,12 @@ export default function PatientDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [showErase, setShowErase] = useState(false)
   const [confirm, setConfirm] = useState('')
+  const [selected, setSelected] = useState<number[]>([])
+
+  const toggleSel = (aid: number) =>
+    setSelected((s) =>
+      s.includes(aid) ? s.filter((x) => x !== aid) : s.length >= 2 ? [s[1], aid] : [...s, aid],
+    )
 
   if (pat.loading || ans.loading) return <p>Chargement…</p>
   if (pat.error) return <p className="error" role="alert">{pat.error}</p>
@@ -33,6 +39,13 @@ export default function PatientDetailPage() {
     try {
       setUpdated(await putJson<Patient>(`/api/patients/${p!.id}/archived`, { archived: !p!.archived }))
     } catch (err) { fail(err) } finally { setBusy(false) }
+  }
+
+  async function exportRecord() {
+    setBusy(true)
+    setActionError(null)
+    try { await downloadFile(`/api/patients/${p!.id}/export`, `dossier-${p!.id}.pdf`) }
+    catch (err) { fail(err) } finally { setBusy(false) }
   }
 
   async function erase() {
@@ -67,6 +80,7 @@ export default function PatientDetailPage() {
         <div className="row">
           <Link className="btn" to={`/patients/${p.id}/edit`}>Modifier</Link>
           <button onClick={toggleArchive} disabled={busy}>{p.archived ? 'Restaurer' : 'Archiver'}</button>
+          <button onClick={exportRecord} disabled={busy}>Exporter le dossier (PDF)</button>
           <button className="danger-btn" onClick={() => setShowErase((s) => !s)} disabled={busy}>
             Supprimer définitivement
           </button>
@@ -95,26 +109,43 @@ export default function PatientDetailPage() {
         {(ans.data ?? []).length === 0 ? (
           <p className="muted">Aucune analyse pour ce patient.</p>
         ) : (
-          <table>
-            <thead>
-              <tr><th>Date</th><th>Résultat</th><th>Type</th><th>Avis</th><th></th></tr>
-            </thead>
-            <tbody>
-              {(ans.data ?? []).map((a) => (
-                <tr key={a.id}>
-                  <td>{fmtDateTime(a.createdAt)}</td>
-                  <td>
-                    {a.label === 'PNEUMONIA'
-                      ? `Pneumonie suspectée ${fmtPct(a.probabilityPneumonia)} %`
-                      : `Pas de pneumonie (${fmtPct(a.probabilityPneumonia)} %)`}
-                  </td>
-                  <td>{a.pneumoniaType ?? 'non évalué'}</td>
-                  <td>{a.doctorOpinion === 'AGREE' ? "D'accord" : a.doctorOpinion === 'DISAGREE' ? "Pas d'accord" : 'À donner'}</td>
-                  <td><Link to={`/analyses/${a.id}`}>Ouvrir</Link></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            <p className="muted">Cochez deux analyses pour les comparer.</p>
+            <table>
+              <thead>
+                <tr><th></th><th>Date</th><th>Résultat</th><th>Type</th><th>Avis</th><th></th></tr>
+              </thead>
+              <tbody>
+                {(ans.data ?? []).map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(a.id)}
+                        onChange={() => toggleSel(a.id)}
+                      />
+                    </td>
+                    <td>{fmtDateTime(a.createdAt)}</td>
+                    <td>
+                      {a.label === 'PNEUMONIA'
+                        ? `Pneumonie suspectée ${fmtPct(a.probabilityPneumonia)} %`
+                        : `Pas de pneumonie (${fmtPct(a.probabilityPneumonia)} %)`}
+                    </td>
+                    <td>{a.pneumoniaType ?? 'non évalué'}</td>
+                    <td>{a.doctorOpinion === 'AGREE' ? "D'accord" : a.doctorOpinion === 'DISAGREE' ? "Pas d'accord" : 'À donner'}</td>
+                    <td><Link to={`/analyses/${a.id}`}>Ouvrir</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {selected.length === 2 && (
+              <p>
+                <Link className="btn" to={`/compare?a=${selected[0]}&b=${selected[1]}`}>
+                  Comparer les 2 analyses cochées
+                </Link>
+              </p>
+            )}
+          </>
         )}
       </section>
     </>

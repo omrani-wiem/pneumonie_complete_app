@@ -20,4 +20,8 @@ public interface AnalysisRepository extends JpaRepository<Analysis, Long> {
     List<Analysis> findAllWithOwner();
 
     long deleteByPatient(com.example.pneumonia.entity.Patient patient);
+
+    long countByOwner(AppUser owner);
+    long countByOwnerAndDoctorOpinion(AppUser owner, String doctorOpinion);
+    long countByOwnerAndLabelAndDoctorOpinion(AppUser owner, String label, String doctorOpinion);
 }

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useFetch } from '../api/useFetch'
 import type { Analysis, Page, Patient } from '../api/types'
 import { fmtDateTime, fmtPct } from '../format'
+import StatsPanel from '../components/StatsPanel'
 
 export default function DashboardPage() {
   const pats = useFetch<Page<Patient>>('/api/patients?size=1')
@@ -24,7 +25,8 @@ export default function DashboardPage() {
         <div className="stat"><strong>{suspected}</strong><span>Pneumonies suspectées</span></div>
         <div className="stat"><strong>{toReview}</strong><span>Sans avis du médecin</span></div>
       </div>
-
+      
+      <StatsPanel />
       <section className="panel">
         <h2>Analyses récentes</h2>
         {analyses.length === 0 ? (

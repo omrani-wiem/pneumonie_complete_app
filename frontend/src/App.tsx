@@ -12,6 +12,7 @@ import AuditPage from './pages/AuditPage'
 import Layout from './components/Layout'
 import EditPatientPage from './pages/EditPatientPage'
 import { getRole, isLoggedIn } from './api/client'
+import ComparePage from './pages/ComparePage'
 
 function RequireAuth({ children }: { children: ReactNode }) {
   return isLoggedIn() ? <>{children}</> : <Navigate to="/login" replace />
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
           <Route path="admin/audit" element={<RequireAdmin><AuditPage /></RequireAdmin>} />
           <Route path="patients/:id/edit" element={<EditPatientPage />} />
+          <Route path="compare" element={<ComparePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

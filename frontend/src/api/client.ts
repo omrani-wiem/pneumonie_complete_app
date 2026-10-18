@@ -131,3 +131,23 @@ export function putJson<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   })
 }
+
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, { credentials: 'include' })
+  } catch {
+    throw new ApiError(0, 'Serveur injoignable. Vérifiez que le backend est démarré.')
+  }
+  if (res.status === 401) {
+    clearToken()
+    throw new ApiError(401, 'Session expirée. Veuillez vous reconnecter.')
+  }
+  if (!res.ok) throw new ApiError(res.status, `Téléchargement impossible (${res.status}).`)
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
