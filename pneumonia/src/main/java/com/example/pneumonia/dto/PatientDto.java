@@ -7,13 +7,13 @@ import java.time.Period;
 
 public record PatientDto(Long id, String recordNumber, String lastName, String firstName,
                          LocalDate birthDate, String sex, String notes, Instant createdAt,
-                         int ageMonths, boolean ageInModelRange) {
+                         int ageMonths, boolean ageInModelRange, boolean archived) {
 
     public static PatientDto of(Patient p) {
         Period per = Period.between(p.getBirthDate(), LocalDate.now());
         int months = per.getYears() * 12 + per.getMonths();
         return new PatientDto(p.getId(), p.getRecordNumber(), p.getLastName(), p.getFirstName(),
                 p.getBirthDate(), p.getSex(), p.getNotes(), p.getCreatedAt(),
-                months, months >= 12 && months < 72);
+                months, months >= 12 && months < 72, p.isArchived());
     }
 }

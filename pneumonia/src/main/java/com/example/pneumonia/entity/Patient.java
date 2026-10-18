@@ -31,6 +31,12 @@ public class Patient {
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
+        @Column(name = "archived", nullable = false)
+    private boolean archived = false;
+
+    public boolean isArchived() { return archived; }
+    public void setArchived(boolean archived) { this.archived = archived; }
+
     public Long getId() { return id; }
     public AppUser getOwner() { return owner; }
     public void setOwner(AppUser owner) { this.owner = owner; }

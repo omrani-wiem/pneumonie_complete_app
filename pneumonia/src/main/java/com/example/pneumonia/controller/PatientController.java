@@ -8,13 +8,18 @@ import com.example.pneumonia.repository.AnalysisRepository;
 import com.example.pneumonia.repository.PatientRepository;
 import com.example.pneumonia.repository.UserRepository;
 import com.example.pneumonia.service.AuditService;
+import com.example.pneumonia.service.PatientService;
 import com.example.pneumonia.service.TreatmentRecommendationService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -25,20 +30,26 @@ public class PatientController {
     public record PatientRequest(String recordNumber, String lastName, String firstName,
                                  LocalDate birthDate, String sex, String notes) {}
 
+    public record ArchiveRequest(boolean archived) {}
+
+    public record PageDto<T>(List<T> items, long total, int page, int size) {}
+
     private final PatientRepository patients;
     private final AnalysisRepository analyses;
     private final UserRepository users;
     private final TreatmentRecommendationService recos;
     private final AuditService audit;
+    private final PatientService patientService;
 
-       public PatientController(PatientRepository patients, AnalysisRepository analyses,
+    public PatientController(PatientRepository patients, AnalysisRepository analyses,
                              UserRepository users, TreatmentRecommendationService recos,
-                             AuditService audit) {
+                             AuditService audit, PatientService patientService) {
         this.patients = patients;
         this.analyses = analyses;
         this.users = users;
         this.recos = recos;
         this.audit = audit;
+        this.patientService = patientService;
     }
 
     @PostMapping
@@ -51,21 +62,25 @@ public class PatientController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Ce numéro de dossier existe déjà.");
         Patient p = new Patient();
         p.setOwner(me);
-        p.setRecordNumber(rn);
-        p.setLastName(r.lastName().trim());
-        p.setFirstName(r.firstName().trim());
-        p.setBirthDate(r.birthDate());
-        p.setSex(r.sex().trim().toUpperCase());
-        p.setNotes(r.notes() == null || r.notes().isBlank() ? null : r.notes().trim());
+        apply(p, r);
         Patient saved = patients.save(p);
         audit.record(me.getEmail(), "PATIENT_CREATE", "patient", saved.getId(), true);
         return ResponseEntity.status(HttpStatus.CREATED).body(PatientDto.of(saved));
     }
 
     @GetMapping
-    public List<PatientDto> list(@AuthenticationPrincipal Jwt jwt) {
-        return patients.findAllByOwnerOrderByCreatedAtDesc(currentUser(jwt)).stream()
-                .map(PatientDto::of).toList();
+    public PageDto<PatientDto> list(@RequestParam(defaultValue = "") String q,
+                                    @RequestParam(defaultValue = "false") boolean archived,
+                                    @RequestParam(defaultValue = "0") int page,
+                                    @RequestParam(defaultValue = "20") int size,
+                                    @AuthenticationPrincipal Jwt jwt) {
+        int s = Math.min(Math.max(size, 1), 100);
+        String term = q == null ? "" : q.trim();
+        if (term.length() > 100) term = term.substring(0, 100);
+        Page<Patient> res = patients.search(currentUser(jwt), archived, term,
+                PageRequest.of(Math.max(page, 0), s, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return new PageDto<>(res.getContent().stream().map(PatientDto::of).toList(),
+                res.getTotalElements(), res.getNumber(), s);
     }
 
     @GetMapping("/{id}")
@@ -77,6 +92,53 @@ public class PatientController {
                     return ResponseEntity.ok(PatientDto.of(p));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody PatientRequest r,
+                                    @AuthenticationPrincipal Jwt jwt) {
+        AppUser me = currentUser(jwt);
+        Patient p = patients.findByIdAndOwner(id, me).orElse(null);
+        if (p == null) return ResponseEntity.notFound().build();
+        String error = validate(r);
+        if (error != null) return ResponseEntity.badRequest().body(error);
+        String rn = r.recordNumber().trim();
+        if (!rn.equals(p.getRecordNumber()) && patients.existsByOwnerAndRecordNumber(me, rn))
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Ce numéro de dossier existe déjà.");
+        apply(p, r);
+        Patient saved = patients.save(p);
+        audit.record(me.getEmail(), "PATIENT_UPDATE", "patient", saved.getId(), true);
+        return ResponseEntity.ok(PatientDto.of(saved));
+    }
+
+    @PutMapping("/{id}/archived")
+    public ResponseEntity<?> archive(@PathVariable Long id, @RequestBody ArchiveRequest body,
+                                     @AuthenticationPrincipal Jwt jwt) {
+        AppUser me = currentUser(jwt);
+        return patients.findByIdAndOwner(id, me)
+                .<ResponseEntity<?>>map(p -> {
+                    p.setArchived(body.archived());
+                    Patient saved = patients.save(p);
+                    audit.record(me.getEmail(), body.archived() ? "PATIENT_ARCHIVE" : "PATIENT_RESTORE",
+                            "patient", saved.getId(), true);
+                    return ResponseEntity.ok(PatientDto.of(saved));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> erase(@PathVariable Long id,
+                                   @RequestParam(required = false) String confirm,
+                                   @AuthenticationPrincipal Jwt jwt) {
+        AppUser me = currentUser(jwt);
+        Patient p = patients.findByIdAndOwner(id, me).orElse(null);
+        if (p == null) return ResponseEntity.notFound().build();
+        if (confirm == null || !confirm.trim().equals(p.getRecordNumber()))
+            return ResponseEntity.badRequest().body("Confirmation incorrecte : retapez le numéro de dossier.");
+        Long pid = p.getId();
+        patientService.erase(p);
+        audit.record(me.getEmail(), "PATIENT_ERASE", "patient", pid, true);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/analyses")
@@ -91,6 +153,15 @@ public class PatientController {
                                     .map(a -> AnalysisDto.of(a, false, recos)).toList());
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private static void apply(Patient p, PatientRequest r) {
+        p.setRecordNumber(r.recordNumber().trim());
+        p.setLastName(r.lastName().trim());
+        p.setFirstName(r.firstName().trim());
+        p.setBirthDate(r.birthDate());
+        p.setSex(r.sex().trim().toUpperCase());
+        p.setNotes(r.notes() == null || r.notes().isBlank() ? null : r.notes().trim());
     }
 
     private static String validate(PatientRequest r) {

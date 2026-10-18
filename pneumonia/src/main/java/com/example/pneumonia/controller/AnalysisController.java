@@ -79,7 +79,10 @@ public class AnalysisController {
                     .body(e.getMessage());
         }
         Patient patient = patients.findByIdAndOwner(patientId, me).orElse(null);
-        if (patient == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient introuvable.");
+        if (patient == null) 
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient introuvable.");
+        if (patient.isArchived())
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Patient archivé : restaurez-le avant de lancer une analyse.");
         if (temperatureC != null && (temperatureC < 30 || temperatureC > 45))
             return ResponseEntity.badRequest().body("Température invalide (30 à 45 °C).");
         if (spo2Percent != null && (spo2Percent < 50 || spo2Percent > 100))

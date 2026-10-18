@@ -125,3 +125,7 @@ tbody tr:hover { background: #f8fafc; }
   .sidebar nav { flex-direction: row; flex-wrap: wrap; }
   .content { padding: 18px 14px; }
 }
+
+.danger-btn { background: var(--danger); }
+.danger-btn:hover:not(:disabled) { background: #8a1c13; }
+input[type=checkbox] { width: auto; margin: 0; display: inline; }

@@ -10,6 +10,7 @@ import AnalysisDetailPage from './pages/AnalysisDetailPage'
 import AdminPage from './pages/AdminPage'
 import AuditPage from './pages/AuditPage'
 import Layout from './components/Layout'
+import EditPatientPage from './pages/EditPatientPage'
 import { getRole, isLoggedIn } from './api/client'
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="analyses/:id" element={<AnalysisDetailPage />} />
           <Route path="admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
           <Route path="admin/audit" element={<RequireAdmin><AuditPage /></RequireAdmin>} />
+          <Route path="patients/:id/edit" element={<EditPatientPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

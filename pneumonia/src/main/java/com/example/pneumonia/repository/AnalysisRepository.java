@@ -18,4 +18,6 @@ public interface AnalysisRepository extends JpaRepository<Analysis, Long> {
 
     @Query("select a from Analysis a join fetch a.owner order by a.createdAt desc")
     List<Analysis> findAllWithOwner();
+
+    long deleteByPatient(com.example.pneumonia.entity.Patient patient);
 }

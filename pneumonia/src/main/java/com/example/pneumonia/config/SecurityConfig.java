@@ -108,7 +108,7 @@ public class SecurityConfig {
             CorsConfiguration cfg = new CorsConfiguration();
             cfg.setAllowedOrigins(origins);              // jamais "*" avec les cookies
             cfg.setAllowCredentials(true);
-            cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
+            cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
             cfg.setAllowedHeaders(List.of("Content-Type"));
             cfg.setMaxAge(3600L);
             source.registerCorsConfiguration("/api/**", cfg);
