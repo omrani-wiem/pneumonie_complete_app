@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { clearToken } from '../api/client'
+import { logout } from '../api/client'
 import { getRole } from '../api/client'
 
 export default function Layout() {
@@ -15,7 +15,7 @@ export default function Layout() {
           {getRole() === 'ADMIN' && <NavLink to="/admin">Comptes</NavLink>}
           <NavLink to="/admin/audit">Journal d'audit</NavLink>
         </nav>
-        <button className="link" onClick={() => { clearToken(); nav('/login') }}>Se déconnecter</button>
+        <button className="link" onClick={async () => { await logout(); nav('/login') }}>Se déconnecter</button>
       </aside>
       <main className="content">
         <Outlet />

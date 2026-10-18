@@ -3,6 +3,8 @@ package com.example.pneumonia.controller;
 import com.example.pneumonia.entity.AppUser;
 import com.example.pneumonia.entity.Role;
 import com.example.pneumonia.repository.UserRepository;
+import com.example.pneumonia.service.AuditService;
+import com.example.pneumonia.service.AuthCookieService;
 import com.example.pneumonia.service.JwtService;
 import com.example.pneumonia.service.LoginAttemptService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,11 +12,11 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import com.example.pneumonia.service.AuditService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -30,21 +32,23 @@ public class AuthController {
 
     public record UserResponse(Long id, String email, Role role) {}
 
-    public record TokenResponse(String token, String email, Role role) {}
+    public record SessionResponse(String email, Role role) {}
 
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
     private final LoginAttemptService attempts;
     private final AuditService audit;
+    private final AuthCookieService cookies;
 
     public AuthController(UserRepository users, PasswordEncoder encoder, JwtService jwt,
-                          LoginAttemptService attempts, AuditService audit) {
+                          LoginAttemptService attempts, AuditService audit, AuthCookieService cookies) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
         this.attempts = attempts;
         this.audit = audit;
+        this.cookies = cookies;
     }
 
     static String passwordError(String p) {
@@ -66,15 +70,15 @@ public class AuthController {
         AppUser u = new AppUser();
         u.setEmail(email);
         u.setPasswordHash(encoder.encode(req.password()));
-        u.setRole(Role.USER);     // l'inscription publique crée toujours un simple utilisateur
-        u.setEnabled(false);      // activation par un administrateur
+        u.setRole(Role.USER);
+        u.setEnabled(false);
         users.save(u);
         audit.record(email, "REGISTER", "user", u.getId(), true);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new UserResponse(u.getId(), u.getEmail(), u.getRole()));
     }
 
-        @PostMapping("/login")
+    @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req, HttpServletRequest http) {
         String email = req.email().trim().toLowerCase();
         String ip = http.getRemoteAddr();
@@ -100,6 +104,15 @@ public class AuthController {
         }
         attempts.recordSuccess(email);
         audit.record(email, "LOGIN_SUCCESS", "user", u.getId(), true);
-        return ResponseEntity.ok(new TokenResponse(jwt.generate(u), u.getEmail(), u.getRole()));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookies.build(jwt.generate(u)).toString())
+                .body(new SessionResponse(u.getEmail(), u.getRole()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookies.clear().toString())
+                .build();
     }
 }

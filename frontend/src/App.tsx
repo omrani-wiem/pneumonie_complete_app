@@ -10,10 +10,10 @@ import AnalysisDetailPage from './pages/AnalysisDetailPage'
 import AdminPage from './pages/AdminPage'
 import AuditPage from './pages/AuditPage'
 import Layout from './components/Layout'
-import { getRole, getToken } from './api/client'
+import { getRole, isLoggedIn } from './api/client'
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  return getToken() ? <>{children}</> : <Navigate to="/login" replace />
+  return isLoggedIn() ? <>{children}</> : <Navigate to="/login" replace />
 }
 
 function RequireAdmin({ children }: { children: ReactNode }) {

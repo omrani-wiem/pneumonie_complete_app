@@ -1,11 +1,14 @@
 const API_URL = import.meta.env.VITE_API_URL as string
-const TOKEN_KEY = 'token'
+const ROLE_KEY = 'role'
 
-export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
-export const setToken = (t: string): void => localStorage.setItem(TOKEN_KEY, t)
-export const clearToken = (): void => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('role') }
-export const getRole = (): string | null => localStorage.getItem('role')
-
+// Le jeton est dans un cookie HttpOnly : JavaScript ne peut ni le lire ni le voler.
+// On ne garde que le rôle, pour l'affichage. La sécurité réelle est côté serveur.
+export const isLoggedIn = (): boolean => localStorage.getItem(ROLE_KEY) !== null
+export const getRole = (): string | null => localStorage.getItem(ROLE_KEY)
+export const clearToken = (): void => {
+  localStorage.removeItem(ROLE_KEY)
+  localStorage.removeItem('token') // ancien stockage, à nettoyer
+}
 
 export class ApiError extends Error {
   status: number
@@ -32,13 +35,9 @@ async function serverMessage(res: Response): Promise<string | null> {
 }
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers)
-  const token = getToken()
-  if (token) headers.set('Authorization', `Bearer ${token}`)
-
   let res: Response
   try {
-    res = await fetch(`${API_URL}${path}`, { ...init, headers })
+    res = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include' })
   } catch {
     throw new ApiError(0, 'Serveur injoignable. Vérifiez que le backend est démarré.')
   }
@@ -77,10 +76,16 @@ export async function login(email: string, password: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   })
-  const t = data.token ?? data.accessToken ?? data.jwt
-  if (typeof t !== 'string') throw new ApiError(500, 'Réponse de connexion inattendue : jeton absent.')
-  setToken(t)
-  localStorage.setItem('role', typeof data.role === 'string' ? data.role : 'USER')
+  clearToken()
+  localStorage.setItem(ROLE_KEY, typeof data.role === 'string' ? data.role : 'USER')
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await request('/api/auth/logout', { method: 'POST' })
+  } finally {
+    clearToken()
+  }
 }
 
 export async function register(name: string, email: string, password: string): Promise<void> {
@@ -92,12 +97,9 @@ export async function register(name: string, email: string, password: string): P
 }
 
 export async function downloadPdf(id: number | string): Promise<void> {
-  const token = getToken()
   let res: Response
   try {
-    res = await fetch(`${API_URL}/api/analyses/${id}/pdf`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
+    res = await fetch(`${API_URL}/api/analyses/${id}/pdf`, { credentials: 'include' })
   } catch {
     throw new ApiError(0, 'Serveur injoignable. Vérifiez que le backend est démarré.')
   }
@@ -128,5 +130,4 @@ export function putJson<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-
 }
