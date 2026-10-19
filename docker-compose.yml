@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: pneumonia
+      POSTGRES_USER: pneumo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+    volumes:
+      - demo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pneumo -d pneumonia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ml:
+    build: ./ml-service-onnx
+    environment:
+      ML_SHARED_SECRET: ${ML_SHARED_SECRET:?définir ML_SHARED_SECRET dans .env}
+
+  backend:
+    build: ./pneumonia
+    depends_on:
+      db:
+        condition: service_healthy
+      ml:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/pneumonia
+      DB_USER: pneumo
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      ML_URL: http://ml:7860
+      ML_SHARED_SECRET: ${ML_SHARED_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?définir JWT_SECRET (32 caractères minimum) dans .env}
+      CORS_ALLOWED_ORIGINS: http://localhost:8081
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?définir ADMIN_EMAIL dans .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?définir ADMIN_PASSWORD dans .env}
+      ML_MODEL_VERSION: ${ML_MODEL_VERSION:-}
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8081:80"
+
+volumes:
+  demo_pgdata:
